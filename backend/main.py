@@ -1,11 +1,16 @@
 import base64
+import io
 import json
 import os
+import time
+from typing import Any
 
+import requests as http_requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -19,7 +24,10 @@ app.add_middleware(
 )
 
 _api_key = os.getenv("OPENAI_API_KEY")
+_hf_token = os.getenv("HF_TOKEN")
 client = OpenAI(api_key=_api_key or "sk-placeholder")  # Only used after _ensure_api_key() validates
+
+BARK_API_URL = "https://api-inference.huggingface.co/models/suno/bark"
 
 
 def _ensure_api_key():
@@ -27,6 +35,14 @@ def _ensure_api_key():
         raise HTTPException(
             status_code=503,
             detail="OPENAI_API_KEY is not configured. Add it to backend/.env and restart the server.",
+        )
+
+
+def _ensure_hf_token():
+    if not _hf_token:
+        raise HTTPException(
+            status_code=503,
+            detail="HF_TOKEN is not configured. Add your HuggingFace token to backend/.env and restart.",
         )
 
 
@@ -248,6 +264,82 @@ async def get_recommendations(file: UploadFile = File(...)):
         )
 
     return data
+
+
+LYRICS_PROMPT = """You are a fun, creative songwriter. The user will describe a room's interior design vibe.
+Write a short, catchy song (4 lines, rhyming couplets) that captures the room's personality.
+Be specific — reference the actual colors, furniture, and mood described.
+Keep it playful, upbeat, and SHORT — max 4 lines, each line under 10 words.
+No intro text, no verse/chorus labels, just the 4 lines of lyrics."""
+
+
+class VibeSongRequest(BaseModel):
+    overall_impression: str
+    categories: list[dict[str, Any]]
+
+
+def _call_bark(lyrics: str) -> bytes:
+    """Call HuggingFace Bark API to sing lyrics. Retries once if model is loading."""
+    headers = {"Authorization": f"Bearer {_hf_token}"}
+    # Wrap in ♪ to trigger singing mode in Bark
+    payload = {"inputs": f"♪ {lyrics} ♪"}
+
+    for attempt in range(3):
+        resp = http_requests.post(BARK_API_URL, headers=headers, json=payload, timeout=120)
+        if resp.status_code == 200:
+            return resp.content
+        if resp.status_code == 503:
+            # Model loading — wait and retry
+            wait = resp.json().get("estimated_time", 20)
+            time.sleep(min(float(wait), 30))
+            continue
+        raise HTTPException(
+            status_code=502,
+            detail=f"HuggingFace Bark error ({resp.status_code}): {resp.text[:200]}",
+        )
+    raise HTTPException(status_code=502, detail="Bark model timed out loading. Try again in 30 seconds.")
+
+
+@app.post("/api/vibe-song")
+async def generate_vibe_song(data: VibeSongRequest):
+    """Generate sung audio using GPT-4o lyrics + HuggingFace Bark singing model."""
+    _ensure_api_key()
+    _ensure_hf_token()
+
+    room_context = f"Room impression: {data.overall_impression}\n"
+    room_context += "Design areas: " + ", ".join(
+        cat.get("name", "") for cat in data.categories
+    )
+
+    try:
+        # Step 1: Generate short lyrics with GPT-4o
+        lyrics_response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": LYRICS_PROMPT},
+                {
+                    "role": "user",
+                    "content": f"Write a 4-line song about this room:\n{room_context}",
+                },
+            ],
+            max_tokens=120,
+            temperature=1.1,
+        )
+        lyrics = lyrics_response.choices[0].message.content.strip()
+
+        # Step 2: Sing the lyrics using Bark (returns WAV bytes)
+        audio_bytes = _call_bark(lyrics)
+        audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Song generation failed: {str(e)}",
+        )
+
+    return {"lyrics": lyrics, "audio_base64": audio_b64, "format": "wav"}
 
 
 if __name__ == "__main__":

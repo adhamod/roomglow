@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import VibeSong from './VibeSong'
 
 const ICONS = {
   palette: (
@@ -83,6 +84,9 @@ export default function DesignTips({ data, preview, onReset, onRefreshRecommenda
           </div>
         )}
       </div>
+
+      {/* Room Anthem */}
+      {data.overall_impression && <VibeSong data={data} />}
 
       {/* Section header */}
       <div className="flex items-center justify-between mb-6">
