@@ -6,19 +6,20 @@
   --color-neon-purple: #b347ea;
   --color-neon-coral: #ff6b6b;
   --color-neon-orange: #ff9f43;
-  --color-dark-base: #0a0a1a;
-  --color-dark-card: #12122a;
-  --color-dark-elevated: #1a1a3e;
+  --color-dark-base: #050510;
+  --color-dark-card: #0c0c22;
+  --color-dark-elevated: #14143a;
   --font-sans: 'Inter', 'Space Grotesk', system-ui, sans-serif;
 }
 
 @layer base {
   body {
     background-color: var(--color-dark-base);
-    color: #e0e0f0;
+    color: #d0d0e0;
     font-family: var(--font-sans);
     margin: 0;
     min-height: 100vh;
+    overflow-x: hidden;
   }
 
   #root {
@@ -27,64 +28,101 @@
 }
 
 @layer utilities {
-  .neon-glow-pink {
-    text-shadow: 0 0 10px #ff2d7b, 0 0 40px #ff2d7b66, 0 0 80px #ff2d7b33;
+  /* Brand wordmark glow — restrained, crisp */
+  .brand-glow-pink {
+    text-shadow: 0 0 10px rgba(255,45,123,0.5), 0 0 20px rgba(255,45,123,0.3);
   }
 
-  .neon-glow-cyan {
-    text-shadow: 0 0 10px #00f0ff, 0 0 40px #00f0ff66, 0 0 80px #00f0ff33;
+  .brand-glow-cyan {
+    text-shadow: 0 0 10px rgba(0,240,255,0.5), 0 0 20px rgba(0,240,255,0.3);
   }
 
+  /* Glass card for results / error states */
   .glass-card {
-    background: rgba(18, 18, 42, 0.7);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(179, 71, 234, 0.25);
-    box-shadow: 0 0 20px rgba(179, 71, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    background: rgba(12, 12, 34, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
   }
 
   .glass-card:hover {
-    border-color: rgba(0, 240, 255, 0.4);
-    box-shadow: 0 0 30px rgba(0, 240, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-color: rgba(255,255,255,0.15);
   }
 
+  /* Primary action button */
   .neon-btn {
     background: linear-gradient(135deg, #ff2d7b, #b347ea);
-    box-shadow: 0 0 20px rgba(255, 45, 123, 0.4);
+    box-shadow: 0 0 20px rgba(255,45,123,0.25);
     transition: all 0.3s ease;
   }
 
   .neon-btn:hover {
-    box-shadow: 0 0 30px rgba(255, 45, 123, 0.6), 0 0 60px rgba(179, 71, 234, 0.3);
+    box-shadow: 0 0 30px rgba(255,45,123,0.4), 0 0 60px rgba(179,71,234,0.2);
     transform: translateY(-1px);
   }
 
   .neon-btn-cyan {
     background: linear-gradient(135deg, #00f0ff, #b347ea);
-    box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+    box-shadow: 0 0 20px rgba(0,240,255,0.2);
     transition: all 0.3s ease;
   }
 
   .neon-btn-cyan:hover {
-    box-shadow: 0 0 30px rgba(0, 240, 255, 0.5), 0 0 60px rgba(179, 71, 234, 0.3);
+    box-shadow: 0 0 30px rgba(0,240,255,0.35), 0 0 60px rgba(179,71,234,0.2);
     transform: translateY(-1px);
   }
 
-  .grid-bg {
-    background-image:
-      linear-gradient(rgba(179, 71, 234, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(179, 71, 234, 0.05) 1px, transparent 1px);
-    background-size: 60px 60px;
+  /* Hero upload card — Premium Surface */
+  .hero-card {
+    position: relative;
+    border-radius: 24px;
+    background: rgba(10, 10, 30, 0.4); /* Dark translucent */
+    backdrop-filter: blur(12px); /* Slight inner glass effect */
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05); /* Subtle inner stroke */
+    transition: all 0.3s ease-out;
+  }
+
+  /* Gradient neon border - 2-3px */
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 26px;
+    padding: 2px;
+    background: linear-gradient(135deg, #ff2d7b, #00f0ff);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.8;
+  }
+
+  /* Outer glow — subtle, low opacity */
+  .hero-card::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 28px;
+    background: linear-gradient(135deg, rgba(255,45,123,0.15), rgba(0,240,255,0.15));
+    filter: blur(20px);
+    z-index: -1;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    opacity: 0.6;
+  }
+
+  .hero-card:hover {
+    background: rgba(10, 10, 30, 0.5); /* Slightly brighter on hover */
+  }
+
+  .hero-card:hover::after {
+    opacity: 0.9; /* Increase glow brightness slightly */
   }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 0.4; }
+  0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
 }
 
 @keyframes spin-slow {
