@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neon-pink: #ff2d7b;
+  --color-neon-cyan: #00f0ff;
+  --color-neon-purple: #b347ea;
+  --color-neon-coral: #ff6b6b;
+  --color-neon-orange: #ff9f43;
+  --color-dark-base: #0a0a1a;
+  --color-dark-card: #12122a;
+  --color-dark-elevated: #1a1a3e;
+  --font-sans: 'Inter', 'Space Grotesk', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-dark-base);
+    color: #e0e0f0;
+    font-family: var(--font-sans);
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .neon-glow-pink {
+    text-shadow: 0 0 10px #ff2d7b, 0 0 40px #ff2d7b66, 0 0 80px #ff2d7b33;
+  }
+
+  .neon-glow-cyan {
+    text-shadow: 0 0 10px #00f0ff, 0 0 40px #00f0ff66, 0 0 80px #00f0ff33;
+  }
+
+  .glass-card {
+    background: rgba(18, 18, 42, 0.7);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(179, 71, 234, 0.25);
+    box-shadow: 0 0 20px rgba(179, 71, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .neon-btn {
+    background: linear-gradient(135deg, #ff2d7b, #b347ea);
+    box-shadow: 0 0 20px rgba(255, 45, 123, 0.4);
+    transition: all 0.3s ease;
+  }
+
+  .neon-btn:hover {
+    box-shadow: 0 0 30px rgba(255, 45, 123, 0.6), 0 0 60px rgba(179, 71, 234, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .neon-btn-cyan {
+    background: linear-gradient(135deg, #00f0ff, #b347ea);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .neon-btn-cyan:hover {
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.5), 0 0 60px rgba(179, 71, 234, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(179, 71, 234, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(179, 71, 234, 0.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
