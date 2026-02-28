@@ -37,7 +37,11 @@ const ICON_BG = [
 
 const TEXT_COLORS = ['text-neon-pink', 'text-neon-cyan', 'text-neon-purple', 'text-neon-orange']
 
-export default function DesignTips({ data, preview, onReset }) {
+function buildShopUrl(searchQuery) {
+  return `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(searchQuery)}`
+}
+
+export default function DesignTips({ data, preview, onReset, onRefreshRecommendations, refreshingProducts = false }) {
   return (
     <div className="w-full max-w-5xl mx-auto">
       {/* Header + image */}
@@ -63,6 +67,56 @@ export default function DesignTips({ data, preview, onReset }) {
           </div>
         )}
       </div>
+
+      {/* Product recommendations */}
+      {data.products?.length > 0 && (
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-neon-cyan">
+              Products to buy
+            </h2>
+            {onRefreshRecommendations && (
+              <button
+                onClick={onRefreshRecommendations}
+                disabled={refreshingProducts}
+                className="text-xs font-semibold uppercase tracking-wider text-neon-cyan/80 hover:text-neon-cyan transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className={`w-4 h-4 ${refreshingProducts ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {refreshingProducts ? 'Loading...' : 'Refresh recommendations'}
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {data.products.map((product, i) => (
+              <a
+                key={i}
+                href={buildShopUrl(product.search_query || product.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-card rounded-2xl p-6 block transition-all duration-300 hover:border-neon-cyan/50 group"
+                style={{ borderColor: BORDER_COLORS[i % BORDER_COLORS.length] }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`font-bold ${TEXT_COLORS[i % TEXT_COLORS.length]}`}>
+                    {product.name}
+                  </span>
+                  <svg className="w-4 h-4 text-gray-500 group-hover:text-neon-cyan transition-colors ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </div>
+                <p className="text-gray-400 text-sm leading-relaxed mb-4">
+                  {product.why}
+                </p>
+                <span className="text-neon-cyan text-xs font-semibold uppercase tracking-wider group-hover:underline">
+                  Find & buy →
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Category cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">

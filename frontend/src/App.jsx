@@ -8,17 +8,20 @@ const STATES = { UPLOAD: 'upload', LOADING: 'loading', RESULTS: 'results', ERROR
 export default function App() {
   const [view, setView] = useState(STATES.UPLOAD)
   const [preview, setPreview] = useState(null)
+  const [file, setFile] = useState(null)
   const [tips, setTips] = useState(null)
   const [error, setError] = useState(null)
+  const [refreshingProducts, setRefreshingProducts] = useState(false)
 
-  const handleUpload = useCallback(async (file) => {
-    const objectUrl = URL.createObjectURL(file)
+  const handleUpload = useCallback(async (uploadedFile) => {
+    const objectUrl = URL.createObjectURL(uploadedFile)
     setPreview(objectUrl)
+    setFile(uploadedFile)
     setView(STATES.LOADING)
     setError(null)
 
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', uploadedFile)
 
     try {
       const res = await fetch('/api/analyze', {
@@ -28,14 +31,21 @@ export default function App() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail || `Server error (${res.status})`)
+        const msg = body.detail || (res.status === 502 || res.status === 500
+          ? 'Backend may be down. Make sure the backend is running (see README).'
+          : `Server error (${res.status})`)
+        throw new Error(msg)
       }
 
       const data = await res.json()
       setTips(data)
       setView(STATES.RESULTS)
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.')
+      const isNetworkError = !err.message || err.message === 'Failed to fetch' || err.message.includes('NetworkError')
+      const msg = isNetworkError
+        ? 'Cannot reach the backend. Run: cd backend && ./run.sh'
+        : err.message
+      setError(msg)
       setView(STATES.ERROR)
     }
   }, [])
@@ -44,9 +54,30 @@ export default function App() {
     if (preview) URL.revokeObjectURL(preview)
     setView(STATES.UPLOAD)
     setPreview(null)
+    setFile(null)
     setTips(null)
     setError(null)
   }, [preview])
+
+  const handleRefreshRecommendations = useCallback(async () => {
+    if (!file) return
+    setRefreshingProducts(true)
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await fetch('/api/recommendations', {
+        method: 'POST',
+        body: formData,
+      })
+      if (!res.ok) throw new Error('Failed to refresh')
+      const data = await res.json()
+      setTips((prev) => (prev ? { ...prev, products: data.products } : prev))
+    } catch {
+      // Silent fail for now; could add toast
+    } finally {
+      setRefreshingProducts(false)
+    }
+  }, [file])
 
   return (
     <div className="min-h-screen grid-bg">
@@ -71,7 +102,13 @@ export default function App() {
         {view === STATES.LOADING && <LoadingState preview={preview} />}
 
         {view === STATES.RESULTS && tips && (
-          <DesignTips data={tips} preview={preview} onReset={handleReset} />
+          <DesignTips
+            data={tips}
+            preview={preview}
+            onReset={handleReset}
+            onRefreshRecommendations={handleRefreshRecommendations}
+            refreshingProducts={refreshingProducts}
+          />
         )}
 
         {view === STATES.ERROR && (

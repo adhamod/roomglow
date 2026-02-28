@@ -6,6 +6,7 @@ backend/.env
 __pycache__/
 *.pyc
 *.pyo
+backend/.venv/
 
 # Node
 frontend/node_modules/
