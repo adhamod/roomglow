@@ -18,7 +18,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+_api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=_api_key or "sk-placeholder")  # Only used after _ensure_api_key() validates
+
+
+def _ensure_api_key():
+    if not _api_key or _api_key == "not-set":
+        raise HTTPException(
+            status_code=503,
+            detail="OPENAI_API_KEY is not configured. Add it to backend/.env and restart the server.",
+        )
+
+
+@app.get("/api/health")
+def health():
+    return {
+        "status": "ok",
+        "openai_configured": bool(_api_key and _api_key != "not-set" and _api_key.startswith("sk-")),
+    }
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -32,22 +49,42 @@ Analyze it carefully and return ONLY valid JSON (no markdown, no code fences) wi
     {
       "name": "Color Palette",
       "icon": "palette",
-      "tips": ["tip 1", "tip 2", "tip 3"]
+      "tips": ["tip 1", "tip 2", "tip 3"],
+      "product": {
+        "name": "A specific purchasable product relevant to color palette (e.g. 'Sage green throw pillow set')",
+        "why": "1 sentence on why this product helps this room's color palette specifically.",
+        "search_query": "short Google Shopping search phrase (e.g. 'sage green throw pillow set')"
+      }
     },
     {
       "name": "Furniture & Layout",
       "icon": "sofa",
-      "tips": ["tip 1", "tip 2", "tip 3"]
+      "tips": ["tip 1", "tip 2", "tip 3"],
+      "product": {
+        "name": "A specific purchasable furniture or layout product",
+        "why": "1 sentence on why this helps the furniture or layout.",
+        "search_query": "short Google Shopping search phrase"
+      }
     },
     {
       "name": "Lighting",
       "icon": "lightbulb",
-      "tips": ["tip 1", "tip 2", "tip 3"]
+      "tips": ["tip 1", "tip 2", "tip 3"],
+      "product": {
+        "name": "A specific purchasable lighting product",
+        "why": "1 sentence on why this improves the lighting.",
+        "search_query": "short Google Shopping search phrase"
+      }
     },
     {
       "name": "Decor & Accessories",
       "icon": "sparkles",
-      "tips": ["tip 1", "tip 2", "tip 3"]
+      "tips": ["tip 1", "tip 2", "tip 3"],
+      "product": {
+        "name": "A specific purchasable decor or accessory item",
+        "why": "1 sentence on why this enhances the decor.",
+        "search_query": "short Google Shopping search phrase"
+      }
     }
   ]
 }
@@ -56,11 +93,34 @@ Rules:
 - Reference SPECIFIC things you see in the photo (e.g. "your beige sectional", "the wooden coffee table").
 - Be practical and actionable — give advice someone could act on this weekend.
 - Keep each tip to 1-2 sentences.
+- Each category's product must be something real and purchasable on Google Shopping.
+- Return ONLY the JSON object, nothing else."""
+
+PRODUCTS_PROMPT = """You are an elite interior design consultant. The user will show you a photo of a room.
+Based on the room, recommend EXACTLY 3 purchasable products that would improve it.
+Return ONLY valid JSON (no markdown, no code fences) with this exact structure:
+
+{
+  "products": [
+    {
+      "name": "Specific product name (e.g. 'Floor lamp with adjustable arm')",
+      "why": "1-2 sentences on why this would improve the room based on what you see",
+      "search_query": "short search phrase to find this product online (e.g. 'modern floor lamp adjustable')"
+    },
+    { "name": "...", "why": "...", "search_query": "..." },
+    { "name": "...", "why": "...", "search_query": "..." }
+  ]
+}
+
+Rules:
+- Suggest 3 different products than last time if the user asks for new recommendations.
+- Be specific and practical. search_query should work on Google Shopping.
 - Return ONLY the JSON object, nothing else."""
 
 
 @app.post("/api/analyze")
 async def analyze_room(file: UploadFile = File(...)):
+    _ensure_api_key()
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(
             status_code=400,
@@ -97,7 +157,7 @@ async def analyze_room(file: UploadFile = File(...)):
                     ],
                 },
             ],
-            max_tokens=1500,
+            max_tokens=2000,
             temperature=0.7,
         )
 
@@ -120,6 +180,74 @@ async def analyze_room(file: UploadFile = File(...)):
         )
 
     return tips
+
+
+@app.post("/api/recommendations")
+async def get_recommendations(file: UploadFile = File(...)):
+    """Get 3 product recommendations for the room. Call again for different suggestions (refresh)."""
+    _ensure_api_key()
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type '{file.content_type}'. Accepted: JPEG, PNG, WebP.",
+        )
+
+    contents = await file.read()
+
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="File too large. Maximum size is 10 MB.",
+        )
+
+    b64_image = base64.b64encode(contents).decode("utf-8")
+    data_uri = f"data:{file.content_type};base64,{b64_image}"
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": PRODUCTS_PROMPT},
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Recommend 3 products to buy that would improve this room. Give different suggestions than before if possible.",
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": data_uri, "detail": "high"},
+                        },
+                    ],
+                },
+            ],
+            max_tokens=800,
+            temperature=0.9,
+        )
+
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1]
+            raw = raw.rsplit("```", 1)[0]
+        data = json.loads(raw)
+
+        if "products" not in data or not data["products"]:
+            raise ValueError("Expected at least one product")
+        data["products"] = data["products"][:3]
+
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI returned an unexpected format. Please try again.",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI recommendations failed: {str(e)}",
+        )
+
+    return data
 
 
 if __name__ == "__main__":
