@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 
+const API_BASE = import.meta.env.VITE_API_URL || ''
 const STATES = { IDLE: 'idle', LOADING: 'loading', READY: 'ready', ERROR: 'error' }
 
 export default function VibeSong({ data }) {
@@ -23,7 +24,7 @@ export default function VibeSong({ data }) {
     setIsPlaying(false)
 
     try {
-      const res = await fetch('/api/vibe-song', {
+      const res = await fetch(`${API_BASE}/api/vibe-song`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

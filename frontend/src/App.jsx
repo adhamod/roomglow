@@ -4,6 +4,8 @@ import LoadingState from './components/LoadingState'
 import DesignTips from './components/DesignTips'
 import SynthwaveBackground from './components/SynthwaveBackground'
 
+const API_BASE = import.meta.env.VITE_API_URL || ''
+
 const STATES = { UPLOAD: 'upload', LOADING: 'loading', RESULTS: 'results', ERROR: 'error' }
 
 export default function App() {
@@ -25,7 +27,7 @@ export default function App() {
     formData.append('file', uploadedFile)
 
     try {
-      const res = await fetch('/api/analyze', {
+      const res = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         body: formData,
       })
@@ -66,7 +68,7 @@ export default function App() {
     const formData = new FormData()
     formData.append('file', file)
     try {
-      const res = await fetch('/api/recommendations', {
+      const res = await fetch(`${API_BASE}/api/recommendations`, {
         method: 'POST',
         body: formData,
       })
