@@ -60,7 +60,7 @@ export default function App() {
           by Stellar Haus
         </p>
         <p className="text-gray-500 mt-1 text-xs">
-          AI-powered interior design tips from your photo
+          Your space deserves better. We'll show you how.
         </p>
       </header>
 
@@ -94,11 +94,6 @@ export default function App() {
           </div>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="text-center pb-6 text-gray-600 text-xs tracking-wider uppercase">
-        Stellar Haus &middot; 2026
-      </footer>
     </div>
   )
 }
