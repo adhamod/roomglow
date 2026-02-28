@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import VibeSong from './VibeSong'
 
 const ICONS = {
@@ -35,26 +34,49 @@ function buildShopUrl(searchQuery) {
   return `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(searchQuery)}`
 }
 
-function buildImageUrl(searchQuery) {
-  return `https://source.unsplash.com/400x250/?${encodeURIComponent(searchQuery)},interior,decor`
+const CATEGORY_ICONS = {
+  palette: (
+    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z" />
+    </svg>
+  ),
+  sofa: (
+    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+    </svg>
+  ),
+  lightbulb: (
+    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+    </svg>
+  ),
+  sparkles: (
+    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+    </svg>
+  ),
 }
 
-function ProductImage({ searchQuery, name }) {
-  const [errored, setErrored] = useState(false)
-  if (errored) {
-    return (
-      <div className="w-full h-36 rounded-xl flex items-center justify-center bg-white/5 text-white/20 text-xs">
-        No preview
-      </div>
-    )
-  }
+const PRODUCT_GRADIENTS = [
+  'linear-gradient(135deg, rgba(255,45,123,0.15) 0%, rgba(179,71,234,0.1) 100%)',
+  'linear-gradient(135deg, rgba(0,240,255,0.15) 0%, rgba(179,71,234,0.1) 100%)',
+  'linear-gradient(135deg, rgba(179,71,234,0.15) 0%, rgba(255,45,123,0.1) 100%)',
+  'linear-gradient(135deg, rgba(255,159,67,0.15) 0%, rgba(255,45,123,0.1) 100%)',
+]
+
+function ProductCard({ name, icon, accentIdx }) {
   return (
-    <img
-      src={buildImageUrl(searchQuery || name)}
-      alt={name}
-      onError={() => setErrored(true)}
-      className="w-full h-36 object-cover rounded-xl"
-    />
+    <div
+      className="w-full h-36 rounded-t-xl flex flex-col items-center justify-center gap-3"
+      style={{ background: PRODUCT_GRADIENTS[accentIdx % PRODUCT_GRADIENTS.length] }}
+    >
+      <span className="text-white/25">
+        {CATEGORY_ICONS[icon] || CATEGORY_ICONS.sparkles}
+      </span>
+      <span className="text-white/20 text-[10px] uppercase tracking-[0.2em] font-medium px-6 text-center leading-relaxed">
+        {name}
+      </span>
+    </div>
   )
 }
 
@@ -136,15 +158,14 @@ export default function DesignTips({ data, preview, onReset, onRefreshRecommenda
                   className="mt-auto rounded-xl overflow-hidden block group border border-white/8 transition-all duration-300 hover:border-white/15 hover:scale-[1.01]"
                 >
                   <div className="relative overflow-hidden h-36">
-                    <ProductImage searchQuery={cat.product.search_query} name={cat.product.name} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <ProductCard name={cat.product.name} icon={cat.icon} accentIdx={i} />
                     <span
-                      className={`absolute bottom-2 left-3 text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm ${accent.text}`}
+                      className={`absolute bottom-2 left-3 text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/40 backdrop-blur-sm ${accent.text}`}
                     >
                       Buy Now
                     </span>
                     <svg
-                      className="absolute top-2 right-2 w-4 h-4 text-white/30 group-hover:text-white/60 transition-colors"
+                      className="absolute top-2 right-2 w-4 h-4 text-white/20 group-hover:text-white/50 transition-colors"
                       fill="none" viewBox="0 0 24 24" stroke="currentColor"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
