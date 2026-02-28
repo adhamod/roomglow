@@ -85,7 +85,7 @@ export default function VibeSong({ data }) {
             Room Anthem
           </h3>
         <p className="text-gray-500 text-xs">
-          AI-generated song sung by Bark · may take ~30s to generate
+          AI-generated singing by Bark · 30–90s · cold start may take longer
         </p>
         </div>
 
@@ -107,7 +107,7 @@ export default function VibeSong({ data }) {
             <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <span className="text-sm font-semibold uppercase tracking-wider">Composing… (~30s)</span>
+            <span className="text-sm font-semibold uppercase tracking-wider">Composing… (30–60s)</span>
           </div>
         )}
 

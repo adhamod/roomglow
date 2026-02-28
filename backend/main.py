@@ -1,10 +1,10 @@
+import asyncio
 import base64
-import io
 import json
 import os
-import time
 from typing import Any
 
+import replicate as replicate_client
 import requests as http_requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -24,10 +24,8 @@ app.add_middleware(
 )
 
 _api_key = os.getenv("OPENAI_API_KEY")
-_hf_token = os.getenv("HF_TOKEN")
+_replicate_token = os.getenv("REPLICATE_API_TOKEN")
 client = OpenAI(api_key=_api_key or "sk-placeholder")  # Only used after _ensure_api_key() validates
-
-BARK_API_URL = "https://api-inference.huggingface.co/models/suno/bark"
 
 
 def _ensure_api_key():
@@ -38,11 +36,11 @@ def _ensure_api_key():
         )
 
 
-def _ensure_hf_token():
-    if not _hf_token:
+def _ensure_replicate():
+    if not _replicate_token:
         raise HTTPException(
             status_code=503,
-            detail="HF_TOKEN is not configured. Add your HuggingFace token to backend/.env and restart.",
+            detail="REPLICATE_API_TOKEN is not configured. Add it to backend/.env and restart.",
         )
 
 
@@ -272,39 +270,19 @@ Be specific — reference the actual colors, furniture, and mood described.
 Keep it playful, upbeat, and SHORT — max 4 lines, each line under 10 words.
 No intro text, no verse/chorus labels, just the 4 lines of lyrics."""
 
+BARK_VERSION = "b76242b40d67c76ab6742e987628a2a9ac019e11d56ab96c4e91ce03b79b2787"
+
 
 class VibeSongRequest(BaseModel):
     overall_impression: str
     categories: list[dict[str, Any]]
 
 
-def _call_bark(lyrics: str) -> bytes:
-    """Call HuggingFace Bark API to sing lyrics. Retries once if model is loading."""
-    headers = {"Authorization": f"Bearer {_hf_token}"}
-    # Wrap in ♪ to trigger singing mode in Bark
-    payload = {"inputs": f"♪ {lyrics} ♪"}
-
-    for attempt in range(3):
-        resp = http_requests.post(BARK_API_URL, headers=headers, json=payload, timeout=120)
-        if resp.status_code == 200:
-            return resp.content
-        if resp.status_code == 503:
-            # Model loading — wait and retry
-            wait = resp.json().get("estimated_time", 20)
-            time.sleep(min(float(wait), 30))
-            continue
-        raise HTTPException(
-            status_code=502,
-            detail=f"HuggingFace Bark error ({resp.status_code}): {resp.text[:200]}",
-        )
-    raise HTTPException(status_code=502, detail="Bark model timed out loading. Try again in 30 seconds.")
-
-
 @app.post("/api/vibe-song")
 async def generate_vibe_song(data: VibeSongRequest):
-    """Generate sung audio using GPT-4o lyrics + HuggingFace Bark singing model."""
+    """Generate sung audio: GPT-4o lyrics + Bark on Replicate for actual singing."""
     _ensure_api_key()
-    _ensure_hf_token()
+    _ensure_replicate()
 
     room_context = f"Room impression: {data.overall_impression}\n"
     room_context += "Design areas: " + ", ".join(
@@ -327,9 +305,35 @@ async def generate_vibe_song(data: VibeSongRequest):
         )
         lyrics = lyrics_response.choices[0].message.content.strip()
 
-        # Step 2: Sing the lyrics using Bark (returns WAV bytes)
-        audio_bytes = _call_bark(lyrics)
-        audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+        # Step 2: Sing with Bark on Replicate (run in thread so we don't block the server)
+        def _run_bark():
+            rc = replicate_client.Client(api_token=_replicate_token)
+            return rc.run(
+                f"suno-ai/bark:{BARK_VERSION}",
+                input={
+                    "prompt": f"♪ {lyrics} ♪",
+                    "text_temp": 0.7,
+                    "waveform_temp": 0.7,
+                },
+            )
+
+        try:
+            output = await asyncio.wait_for(
+                asyncio.to_thread(_run_bark),
+                timeout=300,  # 5 minute max
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=504,
+                detail="Song generation timed out. Bark model is still warming up on Replicate — try again in 1 minute.",
+            )
+
+        audio_url = output.get("audio_out") if isinstance(output, dict) else str(output)
+
+        # Step 3: Download the WAV and return as base64
+        audio_resp = http_requests.get(audio_url, timeout=30)
+        audio_resp.raise_for_status()
+        audio_b64 = base64.b64encode(audio_resp.content).decode("utf-8")
 
     except HTTPException:
         raise
