@@ -49,32 +49,43 @@ Analyze it carefully and return ONLY valid JSON (no markdown, no code fences) wi
     {
       "name": "Color Palette",
       "icon": "palette",
-      "tips": ["tip 1", "tip 2", "tip 3"]
+      "tips": ["tip 1", "tip 2", "tip 3"],
+      "product": {
+        "name": "A specific purchasable product relevant to color palette (e.g. 'Sage green throw pillow set')",
+        "why": "1 sentence on why this product helps this room's color palette specifically.",
+        "search_query": "short Google Shopping search phrase (e.g. 'sage green throw pillow set')"
+      }
     },
     {
       "name": "Furniture & Layout",
       "icon": "sofa",
-      "tips": ["tip 1", "tip 2", "tip 3"]
+      "tips": ["tip 1", "tip 2", "tip 3"],
+      "product": {
+        "name": "A specific purchasable furniture or layout product",
+        "why": "1 sentence on why this helps the furniture or layout.",
+        "search_query": "short Google Shopping search phrase"
+      }
     },
     {
       "name": "Lighting",
       "icon": "lightbulb",
-      "tips": ["tip 1", "tip 2", "tip 3"]
+      "tips": ["tip 1", "tip 2", "tip 3"],
+      "product": {
+        "name": "A specific purchasable lighting product",
+        "why": "1 sentence on why this improves the lighting.",
+        "search_query": "short Google Shopping search phrase"
+      }
     },
     {
       "name": "Decor & Accessories",
       "icon": "sparkles",
-      "tips": ["tip 1", "tip 2", "tip 3"]
+      "tips": ["tip 1", "tip 2", "tip 3"],
+      "product": {
+        "name": "A specific purchasable decor or accessory item",
+        "why": "1 sentence on why this enhances the decor.",
+        "search_query": "short Google Shopping search phrase"
+      }
     }
-  ],
-  "products": [
-    {
-      "name": "Specific product name (e.g. 'Floor lamp with adjustable arm')",
-      "why": "1-2 sentences on why this would improve the room based on what you see",
-      "search_query": "short search phrase to find this product online (e.g. 'modern floor lamp adjustable')"
-    },
-    { "name": "...", "why": "...", "search_query": "..." },
-    { "name": "...", "why": "...", "search_query": "..." }
   ]
 }
 
@@ -82,7 +93,7 @@ Rules:
 - Reference SPECIFIC things you see in the photo (e.g. "your beige sectional", "the wooden coffee table").
 - Be practical and actionable — give advice someone could act on this weekend.
 - Keep each tip to 1-2 sentences.
-- For products: suggest 3 real, purchasable items that would clearly improve the room. Use search_query that will find the product on Google Shopping.
+- Each category's product must be something real and purchasable on Google Shopping.
 - Return ONLY the JSON object, nothing else."""
 
 PRODUCTS_PROMPT = """You are an elite interior design consultant. The user will show you a photo of a room.
@@ -146,7 +157,7 @@ async def analyze_room(file: UploadFile = File(...)):
                     ],
                 },
             ],
-            max_tokens=1500,
+            max_tokens=2000,
             temperature=0.7,
         )
 
