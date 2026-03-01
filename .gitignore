@@ -2,6 +2,9 @@
 .env
 backend/.env
 
+# Personal notes (contains API keys — never commit)
+MY-NOTES.md
+
 # Python
 __pycache__/
 *.pyc
