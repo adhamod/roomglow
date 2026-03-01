@@ -11,6 +11,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from pydantic import BaseModel
+from supabase import create_client, Client
 
 load_dotenv()
 
@@ -26,6 +27,10 @@ app.add_middleware(
 _api_key = os.getenv("OPENAI_API_KEY")
 _replicate_token = os.getenv("REPLICATE_API_TOKEN")
 client = OpenAI(api_key=_api_key or "sk-placeholder")  # Only used after _ensure_api_key() validates
+
+_supabase_url = os.getenv("SUPABASE_URL")
+_supabase_key = os.getenv("SUPABASE_KEY")
+supabase: Client | None = create_client(_supabase_url, _supabase_key) if _supabase_url and _supabase_key else None
 
 
 def _ensure_api_key():
@@ -132,8 +137,30 @@ Rules:
 - Return ONLY the JSON object, nothing else."""
 
 
+def _style_context(vibe: str | None, priority: str | None, budget: str | None, style_tag: str | None) -> str:
+    """Build a style context string from quiz answers to inject into prompts."""
+    if not any([vibe, priority, budget]):
+        return ""
+    parts = []
+    if style_tag:
+        parts.append(f"Their style profile is: {style_tag}.")
+    if vibe:
+        parts.append(f"Room vibe preference: {vibe}.")
+    if priority:
+        parts.append(f"They prioritize: {priority}.")
+    if budget:
+        parts.append(f"Budget style: {budget}.")
+    return "\n\nUser style profile from quiz:\n" + " ".join(parts) + "\nTailor all tips and product recommendations to match this profile."
+
+
 @app.post("/api/analyze")
-async def analyze_room(file: UploadFile = File(...)):
+async def analyze_room(
+    file: UploadFile = File(...),
+    vibe: str | None = None,
+    priority: str | None = None,
+    budget: str | None = None,
+    style_tag: str | None = None,
+):
     _ensure_api_key()
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(
@@ -151,12 +178,13 @@ async def analyze_room(file: UploadFile = File(...)):
 
     b64_image = base64.b64encode(contents).decode("utf-8")
     data_uri = f"data:{file.content_type};base64,{b64_image}"
+    style_ctx = _style_context(vibe, priority, budget, style_tag)
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": SYSTEM_PROMPT + style_ctx},
                 {
                     "role": "user",
                     "content": [
@@ -197,7 +225,13 @@ async def analyze_room(file: UploadFile = File(...)):
 
 
 @app.post("/api/recommendations")
-async def get_recommendations(file: UploadFile = File(...)):
+async def get_recommendations(
+    file: UploadFile = File(...),
+    vibe: str | None = None,
+    priority: str | None = None,
+    budget: str | None = None,
+    style_tag: str | None = None,
+):
     """Get 3 product recommendations for the room. Call again for different suggestions (refresh)."""
     _ensure_api_key()
     if file.content_type not in ALLOWED_TYPES:
@@ -216,12 +250,13 @@ async def get_recommendations(file: UploadFile = File(...)):
 
     b64_image = base64.b64encode(contents).decode("utf-8")
     data_uri = f"data:{file.content_type};base64,{b64_image}"
+    style_ctx = _style_context(vibe, priority, budget, style_tag)
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": PRODUCTS_PROMPT},
+                {"role": "system", "content": PRODUCTS_PROMPT + style_ctx},
                 {
                     "role": "user",
                     "content": [
@@ -344,6 +379,52 @@ async def generate_vibe_song(data: VibeSongRequest):
         )
 
     return {"lyrics": lyrics, "audio_base64": audio_b64, "format": "wav"}
+
+
+STYLE_TAGS = {
+    ("Cozy", "Comfort"): "Hygge Haven",
+    ("Cozy", "Aesthetics"): "Warm Aesthetic",
+    ("Cozy", "Function"): "Practical Cozy",
+    ("Modern", "Comfort"): "Modern Comfort",
+    ("Modern", "Aesthetics"): "Sleek & Styled",
+    ("Modern", "Function"): "Clean Functional",
+    ("Boho", "Comfort"): "Free-Spirit Lounge",
+    ("Boho", "Aesthetics"): "Boho Chic",
+    ("Boho", "Function"): "Eclectic Practical",
+    ("Minimalist", "Comfort"): "Calm Minimalist",
+    ("Minimalist", "Aesthetics"): "Minimal Aesthetic",
+    ("Minimalist", "Function"): "Essential Living",
+}
+
+
+class QuizRequest(BaseModel):
+    vibe: str
+    priority: str
+    budget: str
+
+
+@app.post("/api/quiz")
+def save_quiz(data: QuizRequest):
+    """Save a style quiz result to Supabase."""
+    if not supabase:
+        raise HTTPException(
+            status_code=503,
+            detail="Database not configured. Add SUPABASE_URL and SUPABASE_KEY to backend/.env.",
+        )
+
+    style_tag = STYLE_TAGS.get((data.vibe, data.priority), f"{data.vibe} • {data.priority}")
+
+    try:
+        result = supabase.table("quiz_results").insert({
+            "vibe": data.vibe,
+            "priority": data.priority,
+            "budget": data.budget,
+            "style_tag": style_tag,
+        }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to save quiz: {str(e)}")
+
+    return {"style_tag": style_tag, "saved": True}
 
 
 if __name__ == "__main__":

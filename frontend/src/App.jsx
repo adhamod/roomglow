@@ -3,18 +3,38 @@ import UploadZone from './components/UploadZone'
 import LoadingState from './components/LoadingState'
 import DesignTips from './components/DesignTips'
 import SynthwaveBackground from './components/SynthwaveBackground'
+import StyleQuiz from './components/StyleQuiz'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
-const STATES = { UPLOAD: 'upload', LOADING: 'loading', RESULTS: 'results', ERROR: 'error' }
+const STATES = { QUIZ: 'quiz', UPLOAD: 'upload', LOADING: 'loading', RESULTS: 'results', ERROR: 'error' }
 
 export default function App() {
-  const [view, setView] = useState(STATES.UPLOAD)
+  const [view, setView] = useState(STATES.QUIZ)
+  const [styleTag, setStyleTag] = useState(null)
+  const [quizAnswers, setQuizAnswers] = useState(null)
   const [preview, setPreview] = useState(null)
   const [file, setFile] = useState(null)
   const [tips, setTips] = useState(null)
   const [error, setError] = useState(null)
   const [refreshingProducts, setRefreshingProducts] = useState(false)
+
+  const handleQuizComplete = useCallback((tag, answers) => {
+    setStyleTag(tag)
+    setQuizAnswers(answers)
+    setView(STATES.UPLOAD)
+  }, [])
+
+  const handleRetakeQuiz = useCallback(() => {
+    if (preview) URL.revokeObjectURL(preview)
+    setView(STATES.QUIZ)
+    setStyleTag(null)
+    setQuizAnswers(null)
+    setPreview(null)
+    setFile(null)
+    setTips(null)
+    setError(null)
+  }, [preview])
 
   const handleUpload = useCallback(async (uploadedFile) => {
     const objectUrl = URL.createObjectURL(uploadedFile)
@@ -25,6 +45,12 @@ export default function App() {
 
     const formData = new FormData()
     formData.append('file', uploadedFile)
+    if (quizAnswers) {
+      formData.append('vibe', quizAnswers.vibe)
+      formData.append('priority', quizAnswers.priority)
+      formData.append('budget', quizAnswers.budget)
+    }
+    if (styleTag) formData.append('style_tag', styleTag)
 
     try {
       const res = await fetch(`${API_BASE}/api/analyze`, {
@@ -55,7 +81,8 @@ export default function App() {
 
   const handleReset = useCallback(() => {
     if (preview) URL.revokeObjectURL(preview)
-    setView(STATES.UPLOAD)
+    setView(STATES.QUIZ)
+    setStyleTag(null)
     setPreview(null)
     setFile(null)
     setTips(null)
@@ -67,6 +94,12 @@ export default function App() {
     setRefreshingProducts(true)
     const formData = new FormData()
     formData.append('file', file)
+    if (quizAnswers) {
+      formData.append('vibe', quizAnswers.vibe)
+      formData.append('priority', quizAnswers.priority)
+      formData.append('budget', quizAnswers.budget)
+    }
+    if (styleTag) formData.append('style_tag', styleTag)
     try {
       const res = await fetch(`${API_BASE}/api/recommendations`, {
         method: 'POST',
@@ -101,8 +134,17 @@ export default function App() {
           </p>
         </header>
 
+        {/* Style tag badge — shown after quiz on upload/results screens */}
+        {styleTag && view !== STATES.QUIZ && (
+          <div className="mb-6 px-4 py-2 rounded-full border border-neon-pink/30 bg-neon-pink/5 text-neon-pink text-xs tracking-widest uppercase font-medium">
+            {styleTag}
+          </div>
+        )}
+
         {/* Main content */}
         <main className="w-full px-4 pb-20 flex flex-col items-center">
+          {view === STATES.QUIZ && <StyleQuiz onComplete={handleQuizComplete} />}
+
           {view === STATES.UPLOAD && <UploadZone onUpload={handleUpload} />}
 
           {view === STATES.LOADING && <LoadingState preview={preview} />}
@@ -112,8 +154,11 @@ export default function App() {
               data={tips}
               preview={preview}
               onReset={handleReset}
+              onRetakeQuiz={handleRetakeQuiz}
               onRefreshRecommendations={handleRefreshRecommendations}
               refreshingProducts={refreshingProducts}
+              styleTag={styleTag}
+              quizAnswers={quizAnswers}
             />
           )}
 

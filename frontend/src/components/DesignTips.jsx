@@ -80,7 +80,7 @@ function ProductCard({ name, icon, accentIdx }) {
   )
 }
 
-export default function DesignTips({ data, preview, onReset, onRefreshRecommendations, refreshingProducts = false }) {
+export default function DesignTips({ data, preview, onReset, onRetakeQuiz, onRefreshRecommendations, refreshingProducts = false, styleTag, quizAnswers }) {
   return (
     <div className="w-full max-w-5xl mx-auto">
       {/* Image + overall impression */}
@@ -187,6 +187,50 @@ export default function DesignTips({ data, preview, onReset, onRefreshRecommenda
           )
         })}
       </div>
+
+      {/* Style Profile Summary */}
+      {(styleTag || quizAnswers) && (
+        <div className="glass-card rounded-2xl p-8 mb-8 max-w-2xl mx-auto">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-neon-pink/60 mb-5 text-center">
+            Your Style Profile
+          </h3>
+          <div className="flex flex-wrap justify-center gap-3 mb-5">
+            {styleTag && (
+              <span className="px-4 py-1.5 rounded-full border border-neon-pink/30 bg-neon-pink/5 text-neon-pink text-xs tracking-widest uppercase font-semibold">
+                {styleTag}
+              </span>
+            )}
+            {quizAnswers?.vibe && (
+              <span className="px-4 py-1.5 rounded-full border border-neon-cyan/20 bg-neon-cyan/5 text-neon-cyan/70 text-xs tracking-widest uppercase font-medium">
+                {quizAnswers.vibe}
+              </span>
+            )}
+            {quizAnswers?.priority && (
+              <span className="px-4 py-1.5 rounded-full border border-neon-purple/20 bg-neon-purple/5 text-neon-purple/70 text-xs tracking-widest uppercase font-medium">
+                {quizAnswers.priority}
+              </span>
+            )}
+            {quizAnswers?.budget && (
+              <span className="px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-white/40 text-xs tracking-widest uppercase font-medium">
+                {quizAnswers.budget}
+              </span>
+            )}
+          </div>
+          <p className="text-white/30 text-xs text-center mb-5">
+            Your recommendations above were tailored to this profile.
+          </p>
+          {onRetakeQuiz && (
+            <div className="flex justify-center">
+              <button
+                onClick={onRetakeQuiz}
+                className="text-neon-pink/60 hover:text-neon-pink text-xs uppercase tracking-widest font-semibold transition-colors cursor-pointer underline underline-offset-4"
+              >
+                Retake Quiz
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Reset */}
       <div className="flex justify-center">
