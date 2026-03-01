@@ -11,8 +11,6 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from pydantic import BaseModel
-from supabase import create_client, Client
-
 load_dotenv()
 
 app = FastAPI(title="Interior Design Advisor API")
@@ -30,7 +28,13 @@ client = OpenAI(api_key=_api_key or "sk-placeholder")  # Only used after _ensure
 
 _supabase_url = os.getenv("SUPABASE_URL")
 _supabase_key = os.getenv("SUPABASE_KEY")
-supabase: Client | None = create_client(_supabase_url, _supabase_key) if _supabase_url and _supabase_key else None
+supabase = None
+if _supabase_url and _supabase_key:
+    try:
+        from supabase import create_client
+        supabase = create_client(_supabase_url, _supabase_key)
+    except Exception:
+        pass
 
 
 def _ensure_api_key():
